@@ -1,0 +1,65 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1100px;background:#f4f7fb;font-family:"Segoe UI",Arial,sans-serif;color:#1d2433;padding:36px 40px 40px}
+h1{text-align:center;font-size:30px}
+.sub{text-align:center;color:#5a6478;font-size:15px;margin:4px 0 26px}
+.row{display:flex;justify-content:center;gap:28px;align-items:stretch}
+.box{background:#fff;border:2px solid #cfd7e6;border-radius:14px;padding:14px 18px;width:560px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.box h2{font-size:16px;margin-bottom:6px;letter-spacing:.3px}
+.box p,.box li{font-size:13.5px;line-height:1.45;color:#3a4357}
+.box ul{padding-left:18px}
+.arrow{text-align:center;color:#6b7690;font-size:22px;line-height:26px;height:30px}
+.arrow small{font-size:12px;font-weight:600;color:#1d2433;background:#e6efe9;border-radius:10px;padding:2px 10px;margin-left:6px;vertical-align:middle}
+.diamond{background:#fff7e0;border:2px solid #e2b93b}
+.crisis{background:#fdecec;border:2px solid #d33a3a;width:360px}
+.crisis h2{color:#b42222}
+.ai{border-color:#4a7be0;background:#f1f6ff}
+.fb{background:#fff4e0;border:2px dashed #e09a2b;width:360px}
+.fb h2{color:#a8660a}
+.srv{border-color:#7a5ad6;background:#f5f1ff}
+.ok{border-color:#2f9e63}
+.tag{display:inline-block;font-size:12px;padding:1px 9px;border-radius:10px;background:#e8edf6;margin:2px 2px 0 0}
+.note{font-size:12px;color:#7a5a00;margin-top:6px;font-weight:600}
+.gap{background:#fff0f0;border:2px solid #d33a3a;border-radius:14px;padding:12px 18px;margin-top:22px;font-size:13px;line-height:1.5}
+.gap b{color:#b42222}
+</style></head><body>
+<h1>OneDoor — Student Support Triage Workflow</h1>
+<div class="sub">As built: React front end · Node API proxy · Gemini 3.5 Flash Lite · browser localStorage</div>
+
+<div class="row"><div class="box"><h2>1. STUDENT INTAKE</h2><p>Student types a freeform message and/or picks quick category chips (hints).</p>
+<span class="tag">Wellbeing</span><span class="tag">Academic</span><span class="tag">Money</span><span class="tag">Housing</span><span class="tag">General</span></div></div>
+<div class="arrow">▼</div>
+
+<div class="row"><div class="box"><h2>2. ANALYSIS SCREEN (loading)</h2><p>App runs <b>detectCrisis(text)</b> in the browser and starts triage.</p></div></div>
+<div class="arrow">▼</div>
+
+<div class="row">
+<div class="box diamond"><h2>3. LOCAL SAFETY GATE (always first)</h2><p>Regex pattern scan in the browser. Decides crisis vs. safe. The AI never makes this decision.</p></div>
+<div class="box crisis"><h2>CRISIS PATH</h2><p>Keyword triage runs locally. <b>No network call — never sent to AI.</b></p><p style="margin-top:6px">→ <b>Crisis screen</b>: immediate 24/7 support contacts.</p></div>
+</div>
+<div class="arrow"><small>Safe ↓</small></div>
+
+<div class="row"><div class="box srv"><h2>4. BROWSER → OUR NODE API &nbsp;(POST /api/triage)</h2>
+<ul><li>Client timeout 6 s</li><li>Server: rate limit 30/min/IP, body ≤ 8 KB, text ≤ 2000 chars, hints validated</li><li><b>Repeats the crisis check</b> — refuses with 422 if crisis (defence in depth)</li><li>No API key set → 503</li></ul></div></div>
+<div class="arrow">▼</div>
+
+<div class="row">
+<div class="box ai"><h2>5. GEMINI 3.5 FLASH LITE (server-side only)</h2>
+<ul><li>API key never reaches the browser; <b>store:false</b>; student text never logged</li><li>JSON schema: category, urgency (Low / Medium / High), recommended service, 2–3 reasons for the student, neutral advisor summary, also-mentioned categories, confidence</li><li>5 s timeout, no retry. Schema has <b>no crisis field</b></li></ul></div>
+<div class="box fb"><h2>FALLBACK: KEYWORD TRIAGE</h2><p>Runs in the browser when AI is not configured, errors, times out, returns a non-200 or returns invalid JSON.</p><p class="note">Student sees no difference.</p></div>
+</div>
+<div class="arrow">▼ &nbsp; <small>normalizeResult() validates every field — invalid → fallback</small></div>
+
+<div class="row"><div class="box ok"><h2>6. RECOMMENDATION</h2><p>Recommended service, urgency badge, reasons, “also mentioned” tags. <b>The student can change the service.</b></p></div></div>
+<div class="arrow">▼</div>
+
+<div class="row"><div class="box ok"><h2>7. STUDENT CONSENT</h2><p><b>Yes</b> → AI summary stored with the request. &nbsp; <b>No</b> → summary dropped.</p></div></div>
+<div class="arrow">▼</div>
+
+<div class="row"><div class="box ok"><h2>8. REQUEST CREATED &amp; CONFIRMED</h2>
+<ul><li>Sequential ID (OD-1042, OD-1043, …) via createRequest()</li><li>Saved to browser <b>localStorage</b> (prototype — no database)</li><li>Confirmation screen → “My requests” list</li></ul></div></div>
+
+<div class="gap"><b>Not built yet:</b> advisor queue / backend delivery · pre-send notice that text goes to an external AI · server-side ticket IDs. If Gemini flags a crisis, it is only logged — routing always follows the local safety gate.</div>
+</body></html>
